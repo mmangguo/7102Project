@@ -31,10 +31,28 @@ class EntrepreneurshipAssistant:
     @staticmethod
     def _fallback_answer(evidences: List[RetrievedChunk]) -> str:
         if not evidences:
-            return "未检索到可用依据。建议先补充问题背景（行业、目标客户、预算、时间范围）。"
+            return (
+                "未检索到可用依据。\n\n"
+                "**建议**：尝试补充更多背景信息（行业、目标客户、预算、时间范围），"
+                "以便检索到更相关的资料。"
+            )
 
-        merged = "\n".join(f"- {ev['title']}: {ev['snippet']}" for ev in evidences[:3])
-        return f"基于检索证据，当前可确认的信息如下：\n{merged}\n\n建议：先明确一个可验证目标，再用小规模实验获取反馈。"
+        lines = [
+            "**⚠️ 当前为离线模式（未配置 API Key），以下为基于检索证据的摘要：**\n",
+        ]
+        for i, ev in enumerate(evidences, 1):
+            title = ev.get("title", "(无标题)")
+            snippet = ev.get("snippet", "")
+            if len(snippet) > 180:
+                snippet = snippet[:180].rstrip() + "…"
+            lines.append(f"**{i}. {title}**\n\n> {snippet}\n")
+
+        lines.append(
+            "---\n\n"
+            "💡 **下一步建议**：先明确一个可验证目标，再用小规模实验获取反馈。"
+            "配置 API Key 后可获得 LLM 生成的结构化深度回答。"
+        )
+        return "\n".join(lines)
 
     def _generate_answer(
         self, query: str, topic: str, evidences: List[RetrievedChunk]
@@ -57,7 +75,10 @@ class EntrepreneurshipAssistant:
             logger.warning("Answer fallback: empty LLM output")
         return text if text else self._fallback_answer(evidences)
 
-    def _build_cleaned_evidence(self, evidences: List[RetrievedChunk]) -> List[dict]:
+    def _build_cleaned_evidence(
+        self, evidences: List[RetrievedChunk], max_display: int = 0
+    ) -> List[dict]:
+        limit = max_display if max_display > 0 else len(evidences)
         return [
             EvidenceItem(
                 chunk_id=str(ev["chunk_id"]),
@@ -66,7 +87,7 @@ class EntrepreneurshipAssistant:
                 score=round(float(ev["score"]), 4),
                 snippet=str(ev["snippet"]),
             ).__dict__
-            for ev in evidences[:3]
+            for ev in evidences[:limit]
         ]
 
     def _build_answer_prompt(

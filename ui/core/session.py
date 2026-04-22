@@ -8,6 +8,8 @@ def init_state() -> None:
         st.session_state.messages = []
     if "pending_query" not in st.session_state:
         st.session_state.pending_query = None
+    if "top_k" not in st.session_state:
+        st.session_state.top_k = 5
 
 
 def resolve_active_query(chat_query: str | None) -> str | None:
