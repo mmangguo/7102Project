@@ -7,7 +7,9 @@ def render_next_question_buttons(next_questions: list[str], message_idx: int) ->
     if not next_questions:
         return
 
-    st.markdown("**你可能接下来会问：**")
+    # Updated to a professional follow-up prompt
+    st.markdown("**Suggested follow-up questions:**")
+
     for i, q in enumerate(next_questions, 1):
         if st.button(
             q,

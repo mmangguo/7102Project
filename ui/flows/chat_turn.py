@@ -8,20 +8,26 @@ from ui.components.suggestions import render_next_question_buttons
 
 
 def run_turn(query: str, assistant: EntrepreneurshipAssistant) -> None:
+    # Append and display user message
     st.session_state.messages.append({"role": "user", "content": query})
     with st.chat_message("user"):
         st.markdown(query)
 
     with st.chat_message("assistant"):
-        thinking_status = st.status("思考中...", expanded=False)
-        thinking_status.write("正在理解你的问题")
-        thinking_status.write("正在检索相关资料")
-        with st.spinner("思考中..."):
+        # Status container for the RAG pipeline steps
+        thinking_status = st.status("Thinking...", expanded=False)
+        thinking_status.write("Analyzing your question...")
+        thinking_status.write("Retrieving relevant resources...")
+
+        with st.spinner("Processing..."):
             turn = assistant.prepare_turn(query)
 
-        thinking_status.update(label="思考中...正在组织回答", state="running")
+        # Transition to generation phase
+        thinking_status.update(label="Thinking... drafting response", state="running")
         answer_placeholder = st.empty()
         chunks: list[str] = []
+
+        # Stream the response to the UI
         for piece in assistant.stream_answer(turn):
             chunks.append(piece)
             answer_placeholder.markdown(
@@ -30,16 +36,22 @@ def run_turn(query: str, assistant: EntrepreneurshipAssistant) -> None:
             )
 
         answer_text = "".join(chunks)
-        thinking_status.update(label="回答已生成", state="complete")
+        thinking_status.update(label="Response generated", state="complete")
         assistant_message_idx = len(st.session_state.messages)
+
+        # Display the source/evidence section
         render_evidence_section(turn["evidence"])
 
+        # Predict next questions
         next_q_loading = st.empty()
-        next_q_loading.caption("正在生成你可能的下一问...")
+        next_q_loading.caption("Generating suggested follow-up questions...")
         result = assistant.finalize_turn(turn, answer_text)
         next_q_loading.empty()
+
+        # Render the clickable suggestion buttons
         render_next_question_buttons(result["next_questions"], assistant_message_idx)
 
+    # Persist the assistant's response in session state
     st.session_state.messages.append(
         {
             "role": "assistant",
