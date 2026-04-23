@@ -17,7 +17,7 @@ def main() -> None:
         page_title="创业助手 MVP",
         page_icon="💡",
         layout="centered",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed",
     )
     inject_global_styles()
     init_state()

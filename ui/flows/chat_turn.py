@@ -6,6 +6,7 @@ import streamlit as st
 
 from pipeline import EntrepreneurshipAssistant
 from ui.components.citations import (
+    build_answer_cards_html,
     extract_cited_indices,
     render_evidence_section,
     stylize_inline_citations,
@@ -53,7 +54,7 @@ def run_turn(query: str, assistant: EntrepreneurshipAssistant) -> None:
 
         answer_text = "".join(chunks)
         answer_placeholder.markdown(
-            stylize_inline_citations(answer_text),
+            build_answer_cards_html(answer_text),
             unsafe_allow_html=True,
         )
 
