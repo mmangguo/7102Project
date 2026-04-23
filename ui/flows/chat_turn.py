@@ -25,10 +25,10 @@ _TYPING_INDICATOR_HTML = (
 
 def run_turn(query: str, assistant: EntrepreneurshipAssistant) -> None:
     st.session_state.messages.append({"role": "user", "content": query})
-    with st.chat_message("user", avatar="🧑"):
+    with st.chat_message("user", avatar="👤"):
         st.markdown(query)
 
-    with st.chat_message("assistant", avatar="💡"):
+    with st.chat_message("assistant", avatar="✨"):
         started_at = time.perf_counter()
         thinking = st.status("正在理解你的问题…", expanded=False, state="running")
 

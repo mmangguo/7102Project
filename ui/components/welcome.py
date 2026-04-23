@@ -28,13 +28,13 @@ def render_welcome() -> None:
     st.markdown(
         """
 <div class="welcome">
-  <div class="welcome__eyebrow">Early-stage founder copilot</div>
-  <h2 class="welcome__headline">把碎片化的商业经验，变成你下一步的可落地动作。</h2>
+  <div class="welcome__eyebrow">AI Entrepreneurship Advisor</div>
+  <h2 class="welcome__headline">你好，有什么创业问题想聊聊？</h2>
   <p class="welcome__desc">
-    基于 BusinessNewsDaily 清洗知识库的检索增强问答助手：先检索相关证据，再结构化给出
-    <strong>核心洞察 · 落地建议 · 待补信息</strong>，并以“毒舌投资人”视角提出 3 个灵魂追问。
+    我是你的 AI 创业顾问，能帮你从知识库里找到相关的商业洞察，给出
+    <strong>结构化建议</strong>和<strong>可执行的下一步</strong>。像跟朋友聊天一样，直接说就好。
   </p>
-  <div class="welcome__section-label">试试这些高频问题</div>
+  <div class="welcome__section-label">试试这些问题</div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -44,9 +44,6 @@ def render_welcome() -> None:
     cols = st.columns(2, gap="small")
     for idx, prompt in enumerate(STARTER_PROMPTS):
         with cols[idx % 2]:
-            # Streamlit buttons don't support raw HTML labels, so we render a
-            # plain text button and rely on CSS to give it a card look. The SVG
-            # icon is decorative and lives in the description below.
             if st.button(
                 prompt["title"],
                 key=f"starter_{idx}",
@@ -56,4 +53,4 @@ def render_welcome() -> None:
                 st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.caption("提示：你也可以直接在下方输入框里开始提问，支持中英文。")
+    st.caption("直接在下方输入框里开始提问，支持中英文。")

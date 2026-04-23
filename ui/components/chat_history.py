@@ -6,7 +6,7 @@ from .citations import extract_cited_indices, render_answer_text, render_evidenc
 from .suggestions import render_next_question_buttons
 
 
-_AVATARS = {"user": "🧑", "assistant": "💡"}
+_AVATARS = {"user": "👤", "assistant": "✨"}
 
 
 def render_history(messages: list[dict]) -> None:

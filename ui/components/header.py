@@ -36,8 +36,8 @@ def render_header(assistant: EntrepreneurshipAssistant) -> None:
 <div class="app-hero">
   <div class="app-hero__logo" aria-hidden="true">{icons.SPARKLE}</div>
   <div class="app-hero__title-wrap">
-    <h1 class="app-hero__title">创业知识库聊天助手</h1>
-    <p class="app-hero__subtitle">RAG 检索 · 结构化洞察 · 一键追问</p>
+    <h1 class="app-hero__title">创业助手</h1>
+    <p class="app-hero__subtitle">检索知识库 · 结构化洞察 · 智能追问</p>
   </div>
   {chip_html}
 </div>

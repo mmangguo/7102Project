@@ -78,10 +78,11 @@ def render_sidebar(assistant: EntrepreneurshipAssistant) -> None:
             '<div class="sidebar-section" style="margin-top:20px;">会话</div>',
             unsafe_allow_html=True,
         )
-        turn_count = sum(
-            1 for m in st.session_state.get("messages", []) if m.get("role") == "assistant"
-        )
-        st.caption(f"已进行 {turn_count} 轮对话")
+        msgs = st.session_state.get("messages", [])
+        user_count = sum(1 for m in msgs if m.get("role") == "user")
+        assistant_count = sum(1 for m in msgs if m.get("role") == "assistant")
+        turn_count = min(user_count, assistant_count)
+        st.caption(f"已完成 {turn_count} 轮问答（{user_count} 条提问 / {assistant_count} 条回答）")
 
         if st.button(
             "清空对话",

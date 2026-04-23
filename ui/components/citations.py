@@ -10,16 +10,19 @@ from . import icons
 _CITE_PATTERN = re.compile(
     r"[（\(]\s*基于证据\s*(\d+(?:\s*[,，、]\s*\d+)*)[^）\)]*?[）\)]"
 )
-_EVIDENCE_REF_PATTERN = re.compile(r"证据\s*(\d+)")
-_HEADING_SPLIT = re.compile(r"(?m)^#{2,3}\s+\d+[.、]\s*(.+)$")
+_EVIDENCE_REF_PATTERN = re.compile(r"证据\s*(\d+(?:\s*[,，、]\s*\d+)*)")
+_SECTION_KW = r"相关性评估|核心洞察|落地步骤|知识缺口|一句话总结"
+_HEADING_SPLIT = re.compile(
+    rf"(?m)^(?:#{{2,3}}\s+)?(?:\*\*)?(\d+[.、]\s*(?:{_SECTION_KW}).*?)(?:\*\*)?$"
+)
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 
 _SECTION_META = {
-    "相关性": ("🎯", "--color-warning"),
-    "核心洞察": ("💡", "--color-primary"),
-    "落地": ("🚀", "--color-cta"),
-    "知识缺口": ("🔍", "--color-text-subtle"),
-    "一句话": ("⭐", "--color-primary-strong"),
+    "相关性": ("🎯", "assess"),
+    "核心洞察": ("💡", "insight"),
+    "落地": ("🚀", "action"),
+    "知识缺口": ("🔍", "gap"),
+    "一句话": ("⭐", "summary"),
 }
 
 
@@ -36,7 +39,11 @@ def stylize_inline_citations(text: str) -> str:
 
 
 def extract_cited_indices(answer_text: str) -> set[int]:
-    return {int(m) for m in _EVIDENCE_REF_PATTERN.findall(answer_text)}
+    indices: set[int] = set()
+    for group in _EVIDENCE_REF_PATTERN.findall(answer_text):
+        for num in re.findall(r"\d+", group):
+            indices.add(int(num))
+    return indices
 
 
 # ------------------------------------------------------------------
@@ -121,18 +128,18 @@ def build_answer_cards_html(text: str) -> str:
         content = parts[i + 1].strip() if i + 1 < len(parts) else ""
 
         icon = "\U0001f4cc"
-        color_var = "--color-primary"
-        for kw, (ic, cv) in _SECTION_META.items():
+        section_type = "insight"
+        for kw, (ic, st) in _SECTION_META.items():
             if kw in heading:
                 icon = ic
-                color_var = cv
+                section_type = st
                 break
 
         heading_html = _BOLD_RE.sub(r"<strong>\1</strong>", heading)
         body_html = _md_to_html(content) if content else ""
 
         cards.append(
-            f'<div class="answer-card" style="border-left-color: var({color_var})">'
+            f'<div class="answer-card" data-section="{section_type}">'
             f'<div class="answer-card__header">'
             f'<span class="answer-card__icon">{icon}</span>'
             f'<span class="answer-card__heading">{heading_html}</span>'
@@ -182,7 +189,20 @@ def render_evidence_section(
             url = html.escape(str(ev.get("url", "")) or "#")
             score = float(ev.get("score", 0.0))
             snippet = html.escape(str(ev.get("snippet", "")))
-            score_label = f"{score:.3f}"
+
+            if score > 0.001:
+                score_html = (
+                    f'<span class="evidence-card__score" '
+                    f'title="\u76f8\u5173\u5ea6 {score:.1%}">'
+                    f'{score:.1%}</span>'
+                )
+            else:
+                score_html = (
+                    f'<span class="evidence-card__score" '
+                    f'title="\u68c0\u7d22\u6392\u540d\u7b2c {i} \u4f4d">'
+                    f'TOP {i}</span>'
+                )
+
             st.markdown(
                 f"""
 <div class="evidence-card">
@@ -192,8 +212,7 @@ def render_evidence_section(
       <span>{title}</span>
       {icons.EXTERNAL_LINK}
     </a>
-    <span class="evidence-card__score" title="TF-IDF \u76f8\u5173\u6027\u5206\u6570"
-          aria-label="\u76f8\u5173\u6027\u5206\u6570 {score_label}">{score_label}</span>
+    {score_html}
   </div>
   <p class="evidence-card__snippet">{snippet}</p>
 </div>
