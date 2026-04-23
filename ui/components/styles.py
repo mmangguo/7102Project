@@ -121,7 +121,7 @@ _GLOBAL_CSS = """
 .block-container {
     max-width: 840px;
     padding-top: 1.5rem;
-    padding-bottom: 6rem;
+    padding-bottom: 0.5rem;
     position: relative;
     z-index: 1;
 }
@@ -238,36 +238,44 @@ footer, #MainMenu { visibility: hidden; }
     margin: var(--space-6) 0 var(--space-3);
 }
 
-/* Starter cards */
+/* Starter cards — floating bubble style */
 .starter-grid .stButton > button {
-    width: 100%; min-height: 80px;
-    padding: 14px 18px;
-    text-align: left; justify-content: flex-start; align-items: flex-start;
-    white-space: normal; line-height: 1.55;
-    border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--color-border);
-    color: var(--color-text); font-weight: 500; font-size: 0.88rem;
-    box-shadow: var(--shadow-xs);
+    width: 100% !important; min-height: 72px;
+    padding: 16px 20px !important;
+    text-align: left !important; justify-content: flex-start !important; align-items: center;
+    white-space: normal !important; line-height: 1.55;
+    border-radius: 20px !important;
+    background: #FFFFFF !important;
+    border: 1.5px solid rgba(108, 92, 231, 0.12) !important;
+    color: var(--color-text) !important; font-weight: 500 !important; font-size: 0.88rem !important;
+    box-shadow:
+        0 6px 20px rgba(108, 92, 231, 0.10),
+        0 2px 6px rgba(0, 0, 0, 0.04) !important;
     cursor: pointer;
-    transition: all var(--duration-base) var(--ease);
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    position: relative;
 }
 .starter-grid .stButton > button:hover {
-    border-color: rgba(108, 92, 231, 0.2);
-    box-shadow: var(--shadow-md), var(--shadow-glow);
-    background: rgba(255, 255, 255, 0.9);
-    transform: translateY(-2px);
+    border-color: rgba(108, 92, 231, 0.25) !important;
+    background: #FFFFFF !important;
+    box-shadow:
+        0 10px 32px rgba(108, 92, 231, 0.14),
+        0 4px 12px rgba(0, 0, 0, 0.05),
+        0 0 0 3px rgba(108, 92, 231, 0.06) !important;
+    transform: translateY(-4px) !important;
 }
 .starter-grid .stButton > button:active {
-    transform: translateY(0);
-    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px) !important;
+    box-shadow:
+        0 3px 10px rgba(108, 92, 231, 0.08),
+        0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 .starter-grid .stButton > button:focus-visible {
-    outline: none;
-    box-shadow: var(--shadow-glow);
-    border-color: var(--color-primary);
+    outline: none !important;
+    border-color: var(--color-primary) !important;
+    box-shadow:
+        0 0 0 3px rgba(108, 92, 231, 0.14),
+        0 6px 20px rgba(108, 92, 231, 0.10) !important;
 }
 
 /* ================================================================
@@ -304,27 +312,37 @@ footer, #MainMenu { visibility: hidden; }
     border-radius: var(--radius-sm) !important;
 }
 
-/* Bottom bar container — transparent, no gray band */
+/* Bottom bar container — floating bubble island */
 [data-testid="stBottom"] {
     background: transparent !important;
     border-top: none !important;
+    padding-bottom: 0 !important;
 }
 [data-testid="stBottom"] > div {
     background: transparent !important;
 }
 [data-testid="stBottomBlockContainer"] {
     background: transparent !important;
-    padding-top: 8px;
-    padding-bottom: env(safe-area-inset-bottom, 8px);
+    padding-top: 0;
+    padding-bottom: env(safe-area-inset-bottom, 6px);
+    max-width: 840px;
+    margin: 0 auto;
 }
 
-/* Chat input — floating pill with gradient focus */
+/* Floating bubble wrapper */
 [data-testid="stChatInput"] {
-    border-radius: var(--radius-xl) !important;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-border-strong) !important;
-    background: #FFFFFF !important;
+    border-radius: 28px !important;
+    border: 1.5px solid rgba(108, 92, 231, 0.16) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow:
+        0 -2px 16px rgba(108, 92, 231, 0.05),
+        0 4px 24px rgba(108, 92, 231, 0.10),
+        0 1px 4px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
     transition: all var(--duration-base) var(--ease);
+    margin-bottom: 4px;
 }
 [data-testid="stChatInput"] textarea {
     font-size: 0.95rem !important;
@@ -333,15 +351,30 @@ footer, #MainMenu { visibility: hidden; }
     background: transparent !important;
 }
 [data-testid="stChatInput"] button {
-    color: var(--color-primary) !important;
-    transition: color var(--duration-fast) var(--ease);
+    color: #fff !important;
+    background: var(--gradient-brand) !important;
+    border-radius: 50% !important;
+    width: 36px !important; height: 36px !important;
+    min-width: 36px !important;
+    padding: 0 !important;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 10px rgba(108, 92, 231, 0.25);
+    transition: all var(--duration-base) var(--ease);
 }
 [data-testid="stChatInput"] button:hover {
-    color: var(--color-primary-strong) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 16px rgba(108, 92, 231, 0.35);
+    transform: scale(1.08);
 }
 [data-testid="stChatInput"]:focus-within {
-    border-color: var(--color-primary) !important;
-    box-shadow: var(--shadow-gradient-glow), var(--shadow-md);
+    border-color: rgba(108, 92, 231, 0.30) !important;
+    background: #FFFFFF !important;
+    box-shadow:
+        0 -2px 16px rgba(108, 92, 231, 0.05),
+        0 4px 24px rgba(108, 92, 231, 0.12),
+        0 0 0 3px rgba(108, 92, 231, 0.10),
+        0 0 48px rgba(56, 189, 248, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 /* ================================================================
@@ -647,7 +680,7 @@ button, [role="button"], a {
     .block-container {
         max-width: 100%;
         padding-top: 1rem;
-        padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
@@ -675,9 +708,10 @@ button, [role="button"], a {
     .welcome__section-label { margin: var(--space-4) 0 var(--space-2); }
 
     .starter-grid .stButton > button {
-        min-height: 60px; padding: 12px 14px;
+        min-height: 56px; padding: 14px 16px;
         font-size: 0.84rem; border-radius: var(--radius-md);
     }
+    .starter-grid .stButton > button:hover { transform: translateY(-2px); }
 
     [data-testid="stChatMessage"] {
         padding: 12px 14px; border-radius: var(--radius-md);
@@ -686,9 +720,15 @@ button, [role="button"], a {
         border-left-width: 2px;
     }
 
-    [data-testid="stChatInput"] { border-radius: var(--radius-lg) !important; }
+    [data-testid="stChatInput"] {
+        border-radius: 22px !important;
+        margin-bottom: 4px;
+    }
     [data-testid="stChatInput"] textarea {
         font-size: 16px !important; min-height: 44px !important;
+    }
+    [data-testid="stChatInput"] button {
+        width: 34px !important; height: 34px !important; min-width: 34px !important;
     }
     [data-testid="stBottom"] {
         padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -711,8 +751,6 @@ button, [role="button"], a {
         padding: 10px 14px 10px 12px; font-size: 0.82rem; min-height: 44px;
     }
     .suggestion-group .stButton > button:hover { transform: none; }
-
-    [data-testid="stBottom"] { background: transparent !important; }
 
     .cite-badge { min-width: 18px; height: 17px; font-size: 0.6rem; }
 }
