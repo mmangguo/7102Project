@@ -29,7 +29,34 @@ class EntrepreneurshipAssistant:
         )
 
     @staticmethod
-    def _fallback_answer(evidences: List[RetrievedChunk]) -> str:
+    def _fallback_answer(
+        evidences: List[RetrievedChunk], lang: str = "zh"
+    ) -> str:
+        if lang == "en":
+            if not evidences:
+                return (
+                    "No usable evidence was retrieved.\n\n"
+                    "**Suggestion**: add more context (industry, target customer, "
+                    "budget, time horizon) so the retriever can surface more relevant material."
+                )
+
+            lines = [
+                "**⚠️ Offline mode (no API key configured). Below is a summary built from the retrieved evidence:**\n",
+            ]
+            for i, ev in enumerate(evidences, 1):
+                title = ev.get("title", "(untitled)")
+                snippet = ev.get("snippet", "")
+                if len(snippet) > 180:
+                    snippet = snippet[:180].rstrip() + "…"
+                lines.append(f"**{i}. {title}**\n\n> {snippet}\n")
+
+            lines.append(
+                "---\n\n"
+                "💡 **Next step**: pick one verifiable goal first, then run a small experiment "
+                "to gather feedback. Configure an API key to unlock structured, in-depth LLM answers."
+            )
+            return "\n".join(lines)
+
         if not evidences:
             return (
                 "未检索到可用依据。\n\n"
@@ -54,27 +81,6 @@ class EntrepreneurshipAssistant:
         )
         return "\n".join(lines)
 
-    def _generate_answer(
-        self, query: str, topic: str, evidences: List[RetrievedChunk]
-    ) -> str:
-        if not self.llm.available:
-            logger.warning("Answer fallback: llm unavailable")
-            return self._fallback_answer(evidences)
-
-        context_blocks = [
-            f"[证据{i}] 标题: {ev['title']}\nURL: {ev['url']}\n内容: {ev['chunk_text'][:900]}"
-            for i, ev in enumerate(evidences[:4], 1)
-        ]
-        prompt = build_answer_prompt(
-            query=query, topic=topic, context_blocks=context_blocks
-        )
-        text = self.llm.generate_text(prompt, temperature=0.2)
-        if text:
-            logger.info("Answer generated via LLM")
-        else:
-            logger.warning("Answer fallback: empty LLM output")
-        return text if text else self._fallback_answer(evidences)
-
     def _build_cleaned_evidence(
         self, evidences: List[RetrievedChunk], max_display: int = 0
     ) -> List[dict]:
@@ -90,16 +96,46 @@ class EntrepreneurshipAssistant:
             for ev in evidences[:limit]
         ]
 
+    @staticmethod
     def _build_answer_prompt(
-        self, query: str, topic: str, evidences: List[RetrievedChunk]
+        query: str,
+        topic: str,
+        evidences: List[RetrievedChunk],
+        confidence: float,
+        lang: str,
     ) -> str:
-        context_blocks = [
-            f"[证据{i}] 标题: {ev['title']}\nURL: {ev['url']}\n内容: {ev['chunk_text'][:900]}"
-            for i, ev in enumerate(evidences[:4], 1)
-        ]
+        # Single hop into prompts.py; the prompt module owns evidence
+        # truncation (MAX_EVIDENCE_IN_PROMPT / MAX_CHUNK_CHARS_IN_PROMPT)
+        # and confidence-aware topic rendering.
         return build_answer_prompt(
-            query=query, topic=topic, context_blocks=context_blocks
+            query=query,
+            topic=topic,
+            evidences=evidences,
+            confidence=confidence,
+            lang=lang,
         )
+
+    def _generate_answer(
+        self,
+        query: str,
+        topic: str,
+        evidences: List[RetrievedChunk],
+        confidence: float,
+        lang: str = "zh",
+    ) -> str:
+        if not self.llm.available:
+            logger.warning("Answer fallback: llm unavailable")
+            return self._fallback_answer(evidences, lang=lang)
+
+        prompt = self._build_answer_prompt(
+            query, topic, evidences, confidence=confidence, lang=lang
+        )
+        text = self.llm.generate_text(prompt, temperature=0.2)
+        if text:
+            logger.info("Answer generated via LLM | lang={}", lang)
+        else:
+            logger.warning("Answer fallback: empty LLM output")
+        return text if text else self._fallback_answer(evidences, lang=lang)
 
     def _predict_next_questions(
         self,
@@ -107,22 +143,29 @@ class EntrepreneurshipAssistant:
         topic: str,
         answer: str,
         evidences: List[RetrievedChunk],
+        confidence: float,
+        lang: str = "zh",
     ) -> List[str]:
         if not self.llm.available:
             logger.warning("Next-question fallback: llm unavailable")
-            return dynamic_next_question_fallback(query, answer)
+            return dynamic_next_question_fallback(query, answer, lang=lang)
 
-        evidence_titles = [ev.get("title", "") for ev in evidences[:3]]
         prompt = build_next_question_prompt(
             query=query,
             topic=topic,
             answer=answer,
-            evidence_titles=evidence_titles,
+            evidences=evidences,
+            confidence=confidence,
+            lang=lang,
         )
         text = self.llm.generate_text(prompt, temperature=0.4)
         candidates = normalize_question_list(text)
         candidates = [q for q in candidates if q and q != query]
-        logger.info("Next-question candidates parsed | count={}", len(candidates))
+        logger.info(
+            "Next-question candidates parsed | count={} | lang={}",
+            len(candidates),
+            lang,
+        )
 
         unique = []
         seen = set()
@@ -133,11 +176,18 @@ class EntrepreneurshipAssistant:
         return (
             unique[:3]
             if len(unique) >= 3
-            else dynamic_next_question_fallback(query, answer)
+            else dynamic_next_question_fallback(query, answer, lang=lang)
         )
 
-    def answer_query(self, query: str, top_k: int = 5) -> AnswerResult:
-        logger.info("Pipeline start | query={} | top_k={}", query[:80], top_k)
+    def answer_query(
+        self, query: str, top_k: int = 5, lang: str = "zh"
+    ) -> AnswerResult:
+        logger.info(
+            "Pipeline start | query={} | top_k={} | lang={}",
+            query[:80],
+            top_k,
+            lang,
+        )
         evidences = self.retriever.retrieve(query, k=top_k)
         logger.info(
             "Retrieval done | count={} | best_score={}",
@@ -150,9 +200,11 @@ class EntrepreneurshipAssistant:
             cls["topic"],
             cls["confidence"],
         )
-        answer = self._generate_answer(query, cls["topic"], evidences)
+        answer = self._generate_answer(
+            query, cls["topic"], evidences, cls["confidence"], lang=lang
+        )
         next_questions = self._predict_next_questions(
-            query, cls["topic"], answer, evidences
+            query, cls["topic"], answer, evidences, cls["confidence"], lang=lang
         )
         logger.info("Pipeline complete | next_questions={}", len(next_questions))
 
@@ -164,8 +216,15 @@ class EntrepreneurshipAssistant:
             "next_questions": next_questions,
         }
 
-    def prepare_turn(self, query: str, top_k: int = 5) -> dict:
-        logger.info("Prepare turn start | query={} | top_k={}", query[:80], top_k)
+    def prepare_turn(
+        self, query: str, top_k: int = 5, lang: str = "zh"
+    ) -> dict:
+        logger.info(
+            "Prepare turn start | query={} | top_k={} | lang={}",
+            query[:80],
+            top_k,
+            lang,
+        )
         evidences = self.retriever.retrieve(query, k=top_k)
         cls = self.classifier.classify(query, evidences)
         logger.info(
@@ -179,36 +238,44 @@ class EntrepreneurshipAssistant:
             "topic": cls["topic"],
             "confidence": cls["confidence"],
             "evidences": evidences,
-            "answer_prompt": self._build_answer_prompt(query, cls["topic"], evidences),
+            "answer_prompt": self._build_answer_prompt(
+                query, cls["topic"], evidences, confidence=cls["confidence"], lang=lang
+            ),
             "evidence": self._build_cleaned_evidence(evidences),
+            "lang": lang,
         }
 
     def stream_answer(self, turn: dict) -> Iterator[str]:
         evidences = turn["evidences"]
+        lang = turn.get("lang", "zh")
         if not self.llm.available:
             logger.warning("Streaming fallback: llm unavailable")
-            yield self._fallback_answer(evidences)
+            yield self._fallback_answer(evidences, lang=lang)
             return
 
-        logger.info("Streaming answer from LLM")
+        logger.info("Streaming answer from LLM | lang={}", lang)
         yield from self.llm.stream_text(turn["answer_prompt"], temperature=0.2)
 
     def finalize_turn(self, turn: dict, answer_text: str) -> AnswerResult:
+        lang = turn.get("lang", "zh")
+        confidence = turn.get("confidence", 1.0)
         answer = answer_text.strip() if answer_text else ""
         if not answer:
             logger.warning("Finalize turn fallback: empty streamed answer")
-            answer = self._fallback_answer(turn["evidences"])
+            answer = self._fallback_answer(turn["evidences"], lang=lang)
 
         next_questions = self._predict_next_questions(
             turn["query"],
             turn["topic"],
             answer,
             turn["evidences"],
+            confidence,
+            lang=lang,
         )
 
         return {
             "topic": turn["topic"],
-            "confidence": turn["confidence"],
+            "confidence": confidence,
             "answer": answer,
             "evidence": turn["evidence"],
             "next_questions": next_questions,

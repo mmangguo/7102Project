@@ -5,34 +5,61 @@ import re
 
 import streamlit as st
 
+from ui.core.i18n import t
+
 from . import icons
 
+# Inline citation patterns recognise both Chinese and English styles, e.g.
+#   （基于证据 1,2）  /  (基于证据1)
+#   (based on evidence 1,2)  /  (Based on Evidence 1)
 _CITE_PATTERN = re.compile(
-    r"[（\(]\s*基于证据\s*(\d+(?:\s*[,，、]\s*\d+)*)[^）\)]*?[）\)]"
+    r"[（\(]\s*(?:基于证据|based\s+on\s+evidence|based\s+on\s+evidences?)\s*"
+    r"(\d+(?:\s*[,，、]\s*\d+)*)[^）\)]*?[）\)]",
+    re.IGNORECASE,
 )
-_EVIDENCE_REF_PATTERN = re.compile(r"证据\s*(\d+(?:\s*[,，、]\s*\d+)*)")
-_SECTION_KW = r"相关性评估|核心洞察|落地步骤|知识缺口|一句话总结"
+# Loose pattern used when extracting which evidence indices were cited.
+_EVIDENCE_REF_PATTERN = re.compile(
+    r"(?:证据|evidences?)\s*(\d+(?:\s*[,，、and\s]*\d+)*)",
+    re.IGNORECASE,
+)
+# Section keywords accepted as numbered headings for the answer-card layout.
+_SECTION_KW = (
+    r"相关性评估|核心洞察|落地步骤|知识缺口|一句话总结"
+    r"|relevance\s+assessment|core\s+insight|action(?:able)?\s+steps?"
+    r"|knowledge\s+gaps?|one[-\s]?(?:line|sentence)\s+summary|summary"
+)
 _HEADING_SPLIT = re.compile(
-    rf"(?m)^(?:#{{2,3}}\s+)?(?:\*\*)?(\d+[.、]\s*(?:{_SECTION_KW}).*?)(?:\*\*)?$"
+    rf"(?im)^(?:#{{2,3}}\s+)?(?:\*\*)?(\d+[.、]\s*(?:{_SECTION_KW}).*?)(?:\*\*)?$"
 )
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 
-_SECTION_META = {
-    "相关性": ("🎯", "assess"),
-    "核心洞察": ("💡", "insight"),
-    "落地": ("🚀", "action"),
-    "知识缺口": ("🔍", "gap"),
-    "一句话": ("⭐", "summary"),
-}
+# (icon, css-section-key) keyed by a substring that must appear in the heading.
+# Order matters: more specific keys (e.g. "One-line") come before generic ones.
+_SECTION_META: list[tuple[str, tuple[str, str]]] = [
+    ("相关性", ("🎯", "assess")),
+    ("Relevance", ("🎯", "assess")),
+    ("核心洞察", ("💡", "insight")),
+    ("Core Insight", ("💡", "insight")),
+    ("落地", ("🚀", "action")),
+    ("Action", ("🚀", "action")),
+    ("知识缺口", ("🔍", "gap")),
+    ("Knowledge Gap", ("🔍", "gap")),
+    ("一句话", ("⭐", "summary")),
+    ("One-line", ("⭐", "summary")),
+    ("One line", ("⭐", "summary")),
+    ("One-sentence", ("⭐", "summary")),
+    ("Summary", ("⭐", "summary")),
+]
 
 
 def stylize_inline_citations(text: str) -> str:
     def repl(match: re.Match[str]) -> str:
         raw = re.sub(r"\s+", "", match.group(1))
         refs = raw.replace("\uff0c", ",").replace("\u3001", ",")
+        aria = t("evidence.cite.aria", refs=refs)
         return (
-            f'<span class="cite-badge" aria-label="\u5f15\u7528\u8bc1\u636e {refs}" '
-            f'title="\u5f15\u7528\u8bc1\u636e {refs}">{refs}</span>'
+            f'<span class="cite-badge" aria-label="{aria}" '
+            f'title="{aria}">{refs}</span>'
         )
 
     return _CITE_PATTERN.sub(repl, text)
@@ -129,10 +156,10 @@ def build_answer_cards_html(text: str) -> str:
 
         icon = "\U0001f4cc"
         section_type = "insight"
-        for kw, (ic, st) in _SECTION_META.items():
-            if kw in heading:
+        for kw, (ic, sec) in _SECTION_META:
+            if kw.lower() in heading.lower():
                 icon = ic
-                section_type = st
+                section_type = sec
                 break
 
         heading_html = _BOLD_RE.sub(r"<strong>\1</strong>", heading)
@@ -182,24 +209,25 @@ def render_evidence_section(
         return
 
     count = len(shown)
-    st.caption(f"\u672c\u56de\u7b54\u5f15\u7528\u4e86 {count} \u6761\u68c0\u7d22\u8bc1\u636e")
-    with st.expander("\u67e5\u770b\u5f15\u7528\u5185\u5bb9", expanded=False):
+    st.caption(t("evidence.caption", n=count))
+    with st.expander(t("evidence.expand"), expanded=False):
         for i, ev in shown:
-            title = html.escape(str(ev.get("title", "")) or "(\u65e0\u6807\u9898)")
+            title = html.escape(str(ev.get("title", "")) or t("evidence.untitled"))
             url = html.escape(str(ev.get("url", "")) or "#")
             score = float(ev.get("score", 0.0))
             snippet = html.escape(str(ev.get("snippet", "")))
 
             if score > 0.001:
+                pct = f"{score:.1%}"
                 score_html = (
                     f'<span class="evidence-card__score" '
-                    f'title="\u76f8\u5173\u5ea6 {score:.1%}">'
-                    f'{score:.1%}</span>'
+                    f'title="{t("evidence.score.title", pct=pct)}">'
+                    f'{pct}</span>'
                 )
             else:
                 score_html = (
                     f'<span class="evidence-card__score" '
-                    f'title="\u68c0\u7d22\u6392\u540d\u7b2c {i} \u4f4d">'
+                    f'title="{t("evidence.rank.title", i=i)}">'
                     f'TOP {i}</span>'
                 )
 

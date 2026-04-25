@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from ui.core.i18n import t
+
 from . import icons
 
 
@@ -12,7 +14,7 @@ def render_next_question_buttons(
         return
 
     st.markdown(
-        f'<div class="suggestions-label">{icons.CARET}<span>你可能接下来会问</span></div>',
+        f'<div class="suggestions-label">{icons.CARET}<span>{t("suggestions.label")}</span></div>',
         unsafe_allow_html=True,
     )
     st.markdown('<div class="suggestion-group">', unsafe_allow_html=True)

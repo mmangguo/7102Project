@@ -138,6 +138,63 @@ footer, #MainMenu { visibility: hidden; }
 }
 
 /* ================================================================
+   LANGUAGE SWITCHER — Top-right pill toggle
+   The switcher renders a zero-height .lang-switch marker right before
+   its row of columns. We use :has() to scope styling to the immediate
+   next horizontal block, so unrelated columns elsewhere on the page
+   are never affected.
+   ================================================================ */
+.lang-switch { display: block; height: 0; line-height: 0; margin: 0; }
+[data-testid="stMarkdown"]:has(> div > .lang-switch),
+[data-testid="stMarkdown"]:has(.lang-switch) {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+[data-testid="element-container"]:has(.lang-switch) {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+}
+[data-testid="element-container"]:has(.lang-switch)
+    + [data-testid="element-container"] [data-testid="stHorizontalBlock"] {
+    gap: 6px !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    margin-bottom: 6px !important;
+}
+[data-testid="element-container"]:has(.lang-switch)
+    + [data-testid="element-container"] .stButton > button {
+    min-height: 30px !important;
+    padding: 4px 12px !important;
+    border-radius: var(--radius-pill) !important;
+    font-weight: 600 !important;
+    font-size: 0.78rem !important;
+    line-height: 1 !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: var(--shadow-xs) !important;
+    transition: all var(--duration-base) var(--ease) !important;
+}
+[data-testid="element-container"]:has(.lang-switch)
+    + [data-testid="element-container"] .stButton > button[kind="secondary"] {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: var(--color-text-muted) !important;
+    border: 1px solid var(--color-border-strong) !important;
+}
+[data-testid="element-container"]:has(.lang-switch)
+    + [data-testid="element-container"] .stButton > button[kind="secondary"]:hover {
+    color: var(--color-primary-strong) !important;
+    border-color: var(--color-primary) !important;
+    background: var(--color-primary-soft) !important;
+}
+[data-testid="element-container"]:has(.lang-switch)
+    + [data-testid="element-container"] .stButton > button[kind="primary"] {
+    background: var(--gradient-brand) !important;
+    color: #fff !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.22) !important;
+}
+
+/* ================================================================
    HERO HEADER — Clean + gradient logo
    ================================================================ */
 .app-hero {

@@ -69,12 +69,12 @@ class LLMClient:
                 temperature,
                 len(prompt),
             )
-            resp = self._client.responses.create(
+            resp = self._client.chat.completions.create(
                 model=self.model_name,
-                input=prompt,
+                messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
             )
-            text = (getattr(resp, "output_text", "") or "").strip()
+            text = (resp.choices[0].message.content or "").strip()
             logger.info("LLM request done | output_chars={}", len(text))
             return text
         except Exception as exc:

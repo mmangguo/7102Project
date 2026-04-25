@@ -12,36 +12,43 @@ from ui.components.citations import (
     stylize_inline_citations,
 )
 from ui.components.suggestions import render_next_question_buttons
+from ui.core.i18n import t
 
 
-_TYPING_INDICATOR_HTML = (
-    '<div class="typing-indicator" role="status" aria-label="AI 正在生成回答">'
-    '<span class="typing-indicator__dot"></span>'
-    '<span class="typing-indicator__dot"></span>'
-    '<span class="typing-indicator__dot"></span>'
-    "</div>"
-)
+def _typing_indicator_html() -> str:
+    return (
+        f'<div class="typing-indicator" role="status" aria-label="{t("turn.typing.aria")}">'
+        '<span class="typing-indicator__dot"></span>'
+        '<span class="typing-indicator__dot"></span>'
+        '<span class="typing-indicator__dot"></span>'
+        "</div>"
+    )
 
 
-def run_turn(query: str, assistant: EntrepreneurshipAssistant) -> None:
+def run_turn(
+    query: str,
+    assistant: EntrepreneurshipAssistant,
+    lang: str = "zh",
+) -> None:
     st.session_state.messages.append({"role": "user", "content": query})
     with st.chat_message("user", avatar="👤"):
         st.markdown(query)
 
     with st.chat_message("assistant", avatar="✨"):
         started_at = time.perf_counter()
-        thinking = st.status("正在理解你的问题…", expanded=False, state="running")
+        thinking = st.status(t("turn.thinking"), expanded=False, state="running")
 
         top_k = int(st.session_state.get("top_k", 5))
-        thinking.write(f"检索相关资料（top-k = {top_k}）")
-        turn = assistant.prepare_turn(query, top_k=top_k)
+        thinking.write(t("turn.retrieving", k=top_k))
+        turn = assistant.prepare_turn(query, top_k=top_k, lang=lang)
         evidence_count = len(turn.get("evidence", []))
-        thinking.write(f"检索完成：命中 {evidence_count} 条证据")
+        thinking.write(t("turn.retrieve_done", n=evidence_count))
 
-        thinking.update(label="组织结构化回答中…", state="running")
+        thinking.update(label=t("turn.composing"), state="running")
 
         answer_placeholder = st.empty()
-        answer_placeholder.markdown(_TYPING_INDICATOR_HTML, unsafe_allow_html=True)
+        typing_html = _typing_indicator_html()
+        answer_placeholder.markdown(typing_html, unsafe_allow_html=True)
 
         chunks: list[str] = []
         for piece in assistant.stream_answer(turn):
@@ -61,17 +68,15 @@ def run_turn(query: str, assistant: EntrepreneurshipAssistant) -> None:
         cited = extract_cited_indices(answer_text)
         render_evidence_section(turn["evidence"], cited_indices=cited)
 
-        thinking.update(label="生成高质量追问中…", state="running")
+        thinking.update(label=t("turn.followups"), state="running")
         next_q_placeholder = st.empty()
-        next_q_placeholder.markdown(
-            _TYPING_INDICATOR_HTML, unsafe_allow_html=True
-        )
+        next_q_placeholder.markdown(typing_html, unsafe_allow_html=True)
         result = assistant.finalize_turn(turn, answer_text)
         next_q_placeholder.empty()
 
         elapsed = time.perf_counter() - started_at
         thinking.update(
-            label=f"完成 · 用时 {elapsed:.1f}s",
+            label=t("turn.complete", sec=elapsed),
             state="complete",
             expanded=False,
         )
