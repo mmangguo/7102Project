@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from typing import Iterator, Optional
 
 from loguru import logger
@@ -57,117 +56,61 @@ class LLMClient:
     def available(self) -> bool:
         return self._client is not None and self.model_name is not None
 
-    @staticmethod
-    def _is_retryable_connection_error(exc: Exception) -> bool:
-        msg = str(exc).lower()
-        return (
-            "connection error" in msg
-            or "connecterror" in msg
-            or "winerror 10054" in msg
-            or "timed out" in msg
-        )
-
     def generate_text(self, prompt: str, temperature: float = 0.2) -> str:
         if not self.available:
             logger.warning("Skipping LLM call because client is unavailable")
             return ""
 
-        max_attempts = 3
-        for attempt in range(1, max_attempts + 1):
-            try:
-                logger.info(
-                    "LLM request start | provider={} | model={} | temperature={} | prompt_chars={} | attempt={}",
-                    self.provider_name,
-                    self.model_name,
-                    temperature,
-                    len(prompt),
-                    attempt,
-                )
-                resp = self._client.responses.create(
-                    model=self.model_name,
-                    input=prompt,
-                    temperature=temperature,
-                )
-                text = (getattr(resp, "output_text", "") or "").strip()
-                logger.info("LLM request done | output_chars={}", len(text))
-                return text
-            except Exception as exc:
-                is_retryable = self._is_retryable_connection_error(exc)
-                if attempt < max_attempts and is_retryable:
-                    wait_sec = 0.8 * attempt
-                    logger.warning(
-                        "LLM request transient failure | attempt={}/{} | wait={}s | error={}",
-                        attempt,
-                        max_attempts,
-                        wait_sec,
-                        exc,
-                    )
-                    time.sleep(wait_sec)
-                    continue
-
-                logger.exception(
-                    "LLM request failed | attempt={}/{} | retryable={} | error={}",
-                    attempt,
-                    max_attempts,
-                    is_retryable,
-                    exc,
-                )
-                return ""
+        try:
+            logger.info(
+                "LLM request start | provider={} | model={} | temperature={} | prompt_chars={}",
+                self.provider_name,
+                self.model_name,
+                temperature,
+                len(prompt),
+            )
+            resp = self._client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+            )
+            text = (resp.choices[0].message.content or "").strip()
+            logger.info("LLM request done | output_chars={}", len(text))
+            return text
+        except Exception as exc:
+            logger.exception("LLM request failed: {}", exc)
+            return ""
 
     def stream_text(self, prompt: str, temperature: float = 0.2) -> Iterator[str]:
         if not self.available:
             logger.warning("Skipping LLM stream because client is unavailable")
             return
 
-        max_attempts = 2
-        for attempt in range(1, max_attempts + 1):
-            try:
-                logger.info(
-                    "LLM stream start | provider={} | model={} | temperature={} | prompt_chars={} | attempt={}",
-                    self.provider_name,
-                    self.model_name,
-                    temperature,
-                    len(prompt),
-                    attempt,
-                )
-                stream = self._client.chat.completions.create(
-                    model=self.model_name,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=temperature,
-                    stream=True,
-                )
+        try:
+            logger.info(
+                "LLM stream start | provider={} | model={} | temperature={} | prompt_chars={}",
+                self.provider_name,
+                self.model_name,
+                temperature,
+                len(prompt),
+            )
+            stream = self._client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                stream=True,
+            )
 
-                chunk_count = 0
-                for event in stream:
-                    try:
-                        delta = event.choices[0].delta.content or ""
-                    except Exception:
-                        delta = ""
-                    if delta:
-                        chunk_count += 1
-                        yield delta
+            chunk_count = 0
+            for event in stream:
+                try:
+                    delta = event.choices[0].delta.content or ""
+                except Exception:
+                    delta = ""
+                if delta:
+                    chunk_count += 1
+                    yield delta
 
-                logger.info("LLM stream done | chunks={}", chunk_count)
-                return
-            except Exception as exc:
-                is_retryable = self._is_retryable_connection_error(exc)
-                if attempt < max_attempts and is_retryable:
-                    wait_sec = 1.0
-                    logger.warning(
-                        "LLM stream transient failure | attempt={}/{} | wait={}s | error={}",
-                        attempt,
-                        max_attempts,
-                        wait_sec,
-                        exc,
-                    )
-                    time.sleep(wait_sec)
-                    continue
-
-                logger.exception(
-                    "LLM stream failed | attempt={}/{} | retryable={} | error={}",
-                    attempt,
-                    max_attempts,
-                    is_retryable,
-                    exc,
-                )
-                return
+            logger.info("LLM stream done | chunks={}", chunk_count)
+        except Exception as exc:
+            logger.exception("LLM stream failed: {}", exc)
